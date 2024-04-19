@@ -29,15 +29,26 @@ export function parseAnswer(answer: AskResponse): ParsedAnswer {
 
     let filteredCitations = [] as Citation[];
     let citationReindex = 0;
+    let citationTitles = new Map(); // to keep track of titles and their first occurrence index
     citationLinks?.forEach(link => {
         // Replacing the links/citations with number
         let citationIndex = link.slice(lengthDocN, link.length - 1);
         let citation = cloneDeep(answer.citations[Number(citationIndex) - 1]) as Citation;
-        if (!filteredCitations.find((c) => c.id === citationIndex) && citation) {
-          answerText = answerText.replaceAll(link, ` ^${++citationReindex}^ `);
-          citation.id = citationIndex; // original doc index to de-dupe
-          citation.reindex_id = citationReindex.toString(); // reindex from 1 for display
-          filteredCitations.push(citation);
+        if (citation) {
+            let index;
+            if (citationTitles.has(citation.title)) {
+                // If the title already exists, use the first occurrence index
+                index = citationTitles.get(citation.title);
+            } else {
+                // If the title does not exist, increment citationReindex and use it
+                index = ++citationReindex;
+                citationTitles.set(citation.title, index);
+                // Only add to filteredCitations if the title is unique
+                citation.id = citationIndex; // original doc index to de-dupe
+                citation.reindex_id = index.toString(); // reindex from 1 for display
+                filteredCitations.push(citation);
+            }
+            answerText = answerText.replaceAll(link, ` ^${index}^ `);
         }
     })
 
